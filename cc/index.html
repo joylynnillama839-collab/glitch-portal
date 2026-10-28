@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glitch Portal: Void Shift</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap');
+
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background-color: #030008;
+            color: #d8b4fe;
+            overflow-x: hidden;
+            touch-action: manipulation;
+            user-select: none;
+        }
+
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        .neon-border {
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.45), inset 0 0 15px rgba(168, 85, 247, 0.15);
+            border: 1px solid rgba(168, 85, 247, 0.65);
+        }
+
+        /* Scanline effect overlay for retro CRT aesthetic */
+        .scanlines {
+            background: linear-gradient(
+                rgba(10, 0, 20, 0) 50%, 
+                rgba(0, 0, 0, 0.35) 50%
+            ), linear-gradient(
+                90deg,
+                rgba(168, 85, 247, 0.03),
+                rgba(0, 0, 0, 0.02),
+                rgba(236, 72, 153, 0.03)
+            );
+            background-size: 100% 3px, 6px 100%;
+            pointer-events: none;
+        }
+
+        canvas {
+            image-rendering: auto;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between items-center p-2 sm:p-4 bg-black relative">
+
+    <!-- Scanline Visual Overlay -->
+    <div class="scanlines fixed inset-0 z-10 pointer-events-none opacity-70"></div>
+
+    <!-- Header Navigation Bar -->
+    <header class="w-full max-w-4xl flex flex-wrap justify-between items-center gap-3 p-3 bg-zinc-950/90 rounded-2xl neon-border z-20 my-1">
+        <div class="flex items-center gap-3">
+            <div class="p-2 bg-purple-600/20 text-purple-400 rounded-xl border border-purple-500/50">
+                <i class="fa-solid fa-atom text-2xl animate-spin" style="animation-duration: 8s;"></i>
+            </div>
+            <div>
+                <h1 class="font-orbitron font-extrabold text-sm sm:text-base text-purple-300 tracking-wider flex items-center gap-2">
+                    GLITCH PORTAL <span class="text-[10px] px-2 py-0.5 bg-fuchsia-500/20 text-fuchsia-300 rounded border border-fuchsia-500/40 font-mono">VOID SHIFT 3.0</span>
+                </h1>
+                <p class="text-[11px] text-zinc-400 font-mono">Precision Cyber-Platformer &bull; Reality Deception Engine</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <button id="audioToggleBtn" class="px-3.5 py-2 bg-zinc-900 hover:bg-zinc-800 text-purple-300 rounded-xl border border-purple-500/30 text-xs font-semibold flex items-center gap-2 transition">
+                <i class="fa-solid fa-volume-high text-fuchsia-400" id="audioIcon"></i>
+                <span id="audioText" class="hidden sm:inline">Sound ON</span>
+            </button>
+            <a href="https://forms.google.com" target="_blank" rel="noopener noreferrer" class="px-4 py-2 bg-gradient-to-r from-purple-700 to-fuchsia-700 hover:from-purple-600 hover:to-fuchsia-600 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition shadow-lg shadow-purple-950/50">
+                <i class="fa-solid fa-square-poll-vertical"></i> <span class="hidden sm:inline">Playtest</span> Feedback
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="w-full max-w-4xl flex flex-col items-center gap-3 z-20">
+
+        <!-- Top Game Status HUD -->
+        <div id="gameHUD" class="w-full flex justify-between items-center bg-zinc-950/90 p-2.5 rounded-xl border border-purple-900/80 text-xs font-orbitron">
+            <div class="flex items-center gap-4">
+                <span class="text-purple-400 font-bold">LEVEL: <span id="hudLevelDisplay" class="text-white text-sm">1 / 10</span></span>
+                <span id="levelTitleDisplay" class="text-zinc-400 hidden sm:inline text-[11px] font-mono">"The Lying Door"</span>
+            </div>
+            <div class="flex items-center gap-4">
+                <span id="hudStarsDisplay" class="text-amber-400 font-bold hidden sm:inline">★★★</span>
+                <span class="text-fuchsia-400">DEATHS: <span id="hudDeathDisplay" class="text-white font-bold text-sm">0</span></span>
+                <span class="text-amber-300">TIME: <span id="hudTimerDisplay" class="text-white font-mono">00:00</span></span>
+            </div>
+        </div>
+
+        <!-- Canvas Container -->
+        <div class="relative w-full max-w-4xl aspect-[16/9] bg-black rounded-2xl neon-border overflow-hidden flex justify-center items-center">
+            <canvas id="gameCanvas" width="800" height="450" class="w-full h-full block bg-black"></canvas>
+
+            <!-- Level Select Overlay Screen -->
+            <div id="levelSelectMenu" class="absolute inset-0 bg-black/95 backdrop-blur flex flex-col items-center justify-center p-6 text-center z-30">
+                <div class="p-3 bg-purple-500/10 rounded-full mb-3 border border-purple-500/40">
+                    <i class="fa-solid fa-portal-exit text-3xl text-fuchsia-400 animate-pulse"></i>
+                </div>
+                <h2 class="font-orbitron text-2xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-fuchsia-300 to-indigo-400 mb-2">
+                    GLITCH PORTAL: VOID SHIFT
+                </h2>
+                <p class="text-xs sm:text-sm text-zinc-400 mb-6 max-w-md font-mono">
+                    Welcome to the anomaly zone. Trust nothing—floors dissolve, gravity flips without warning, and the exit portal lies. Adapt and outsmart the glitch.
+                </p>
+                
+                <div class="grid grid-cols-5 gap-2.5 max-w-md w-full mb-6" id="levelGridButtons">
+                    <!-- Level Buttons Dynamically Injected -->
+                </div>
+
+                <div class="flex gap-3">
+                    <button id="startFirstLevelBtn" class="px-8 py-3.5 bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-orbitron text-xs font-bold rounded-xl shadow-lg shadow-purple-900/50 transition transform active:scale-95 border border-purple-400/40">
+                        INITIATE LEVEL 1
+                    </button>
+                </div>
+            </div>
+
+            <!-- In-Game Level Clear Modal Overlay -->
+            <div id="levelClearOverlay" class="absolute inset-0 bg-black/90 backdrop-blur flex flex-col items-center justify-center p-6 text-center z-30 hidden">
+                <div class="text-4xl mb-2 text-amber-400 animate-bounce" id="clearStarsDisplay">★★★</div>
+                <h2 class="font-orbitron text-xl sm:text-2xl font-bold text-purple-300 mb-1" id="clearLevelTitle">LEVEL CLEARED!</h2>
+                <p class="text-xs text-zinc-400 mb-4" id="clearStatsText">Deaths: 0 | Time: 00:08</p>
+                <div class="flex gap-3">
+                    <button id="nextLevelBtn" class="px-6 py-3 bg-purple-700 hover:bg-purple-600 text-white font-orbitron text-xs font-bold rounded-xl shadow-lg shadow-purple-900/50 transition">
+                        NEXT SECTOR <i class="fa-solid fa-arrow-right ml-1"></i>
+                    </button>
+                    <button id="replayLevelBtn" class="px-5 py-3 bg-zinc-900 hover:bg-zinc-800 text-purple-300 border border-purple-500/30 font-orbitron text-xs font-bold rounded-xl transition">
+                        REPLAY
+                    </button>
+                </div>
+            </div>
+
+            <!-- In-Game Victory Screen Overlay -->
+            <div id="gameVictoryOverlay" class="absolute inset-0 bg-black/95 backdrop-blur flex flex-col items-center justify-center p-6 text-center z-30 hidden">
+                <div class="text-5xl mb-2 text-fuchsia-400 animate-bounce">🌌</div>
+                <h2 class="font-orbitron text-2xl sm:text-3xl font-bold text-purple-300 mb-1">VOID SHIFT CONQUERED!</h2>
+                <p class="text-xs text-zinc-400 mb-4">You pierced through every trap, deceptive portal, and corrupted sector.</p>
+                
+                <div class="bg-zinc-950 border border-purple-900/80 p-4 rounded-xl text-xs space-y-1 mb-6 text-left w-full max-w-xs">
+                    <div class="flex justify-between text-zinc-300"><span>Total Anomaly Deaths:</span><span id="finalDeathCount" class="font-bold text-fuchsia-400">0</span></div>
+                    <div class="flex justify-between text-zinc-300"><span>Execution Time:</span><span id="finalTimeCount" class="font-bold text-amber-300">00:00</span></div>
+                </div>
+
+                <!-- Google Forms Link Button -->
+                <a href="https://forms.google.com" target="_blank" rel="noopener noreferrer" class="px-6 py-3.5 bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-orbitron text-xs font-bold rounded-xl shadow-lg shadow-purple-900/50 transition transform active:scale-95 border border-purple-400/40 flex items-center gap-2">
+                    <i class="fa-solid fa-paper-plane text-sm"></i> SUBMIT FEEDBACK (GOOGLE FORMS)
+                </a>
+            </div>
+        </div>
+
+        <!-- On-Screen Touch Controls (Mobile Friendly) -->
+        <div class="w-full flex justify-between items-center px-2 py-1 sm:hidden">
+            <div class="flex gap-2">
+                <button id="btnLeft" class="w-14 h-12 bg-zinc-950 text-purple-400 border border-purple-500/40 rounded-xl text-xl flex items-center justify-center active:bg-purple-500/20">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <button id="btnRight" class="w-14 h-12 bg-zinc-950 text-purple-400 border border-purple-500/40 rounded-xl text-xl flex items-center justify-center active:bg-purple-500/20">
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+            <div class="flex gap-2">
+                <button id="btnRestart" class="w-12 h-12 bg-zinc-950 text-fuchsia-400 border border-fuchsia-500/40 rounded-xl text-lg flex items-center justify-center active:bg-fuchsia-500/20">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+                <button id="btnJump" class="w-16 h-12 bg-purple-700 text-white rounded-xl font-orbitron font-bold text-xs flex items-center justify-center active:bg-purple-600">
+                    JUMP
+                </button>
+            </div>
+        </div>
+
+        <!-- Controls Legend -->
+        <div class="w-full flex justify-between items-center text-[11px] text-zinc-500 px-1 font-mono">
+            <span>Controls: <kbd class="px-1.5 py-0.5 bg-zinc-900 text-purple-300 rounded border border-purple-900">A</kbd>/<kbd class="px-1.5 py-0.5 bg-zinc-900 text-purple-300 rounded border border-purple-900">D</kbd> or <kbd class="px-1.5 py-0.5 bg-zinc-900 text-purple-300 rounded border border-purple-900">←</kbd>/<kbd class="px-1.5 py-0.5 bg-zinc-900 text-purple-300 rounded border border-purple-900">→</kbd> to Move &bull; <kbd class="px-1.5 py-0.5 bg-zinc-900 text-purple-300 rounded border border-purple-900">Space</kbd>/<kbd class="px-1.5 py-0.5 bg-zinc-900 text-purple-300 rounded border border-purple-900">W</kbd> to Jump</span>
+            <span><kbd class="px-1.5 py-0.5 bg-zinc-900 text-fuchsia-300 rounded border border-fuchsia-900">R</kbd> Reset Level &bull; <kbd class="px-1.5 py-0.5 bg-zinc-900 text-purple-300 rounded border border-purple-900">Esc</kbd> Level Select</span>
+        </div>
+
+    </main>
+
+    <footer class="w-full max-w-4xl text-center py-2 text-xs text-zinc-600 z-20 font-mono">
+        Glitch Portal: Void Shift &bull; Multi-Track Cyber Synth Engine
+    </footer>
+
+    <!-- Game Engine & Physics Script -->
+    <script>
+        // --- Web Audio Synthesizer Engine with Music Sequencer & Multi-Track Audio ---
+        class GlitchSynthEngine {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+                this.musicTimer = null;
+                this.step = 0;
+
+                // Chiptune synth melody scales
+                this.bassScale = [110, 110, 130.81, 146.83, 110, 110, 164.81, 146.83];
+                this.leadMelody = [440, 523.25, 659.25, 587.33, 659.25, 783.99, 880, 783.99];
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                    this.startMusicLoop();
+                } else if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            startMusicLoop() {
+                if (this.musicTimer) return;
+                this.musicTimer = setInterval(() => {
+                    if (this.muted || !this.ctx) return;
+                    this.playMusicStep(this.step);
+                    this.step = (this.step + 1) % 16;
+                }, 130);
+            }
+
+            playMusicStep(step) {
+                const now = this.ctx.currentTime;
+                
+                // Bass synth track
+                const bassOsc = this.ctx.createOscillator();
+                const bassGain = this.ctx.createGain();
+                bassOsc.type = 'sawtooth';
+                const freq = this.bassScale[Math.floor(step / 2) % this.bassScale.length];
+                bassOsc.frequency.setValueAtTime(freq / 2, now);
+
+                bassGain.gain.setValueAtTime(0.02, now);
+                bassGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+
+                bassOsc.connect(bassGain);
+                bassGain.connect(this.ctx.destination);
+                bassOsc.start(now);
+                bassOsc.stop(now + 0.1);
+
+                // Lead arpeggio track
+                if (step % 2 === 0) {
+                    const leadOsc = this.ctx.createOscillator();
+                    const leadGain = this.ctx.createGain();
+                    leadOsc.type = 'square';
+                    const leadFreq = this.leadMelody[(step / 2) % this.leadMelody.length];
+                    leadOsc.frequency.setValueAtTime(leadFreq, now);
+
+                    leadGain.gain.setValueAtTime(0.015, now);
+                    leadGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+                    leadOsc.connect(leadGain);
+                    leadGain.connect(this.ctx.destination);
+                    leadOsc.start(now);
+                    leadOsc.stop(now + 0.08);
+                }
+
+                // Kick / Snare percussion synthesis
+                if (step % 4 === 0) {
+                    const kickOsc = this.ctx.createOscillator();
+                    const kickGain = this.ctx.createGain();
+                    kickOsc.frequency.setValueAtTime(120, now);
+                    kickOsc.frequency.exponentialRampToValueAtTime(30, now + 0.08);
+
+                    kickGain.gain.setValueAtTime(0.04, now);
+                    kickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+                    kickOsc.connect(kickGain);
+                    kickGain.connect(this.ctx.destination);
+                    kickOsc.start(now);
+                    kickOsc.stop(now + 0.08);
+                } else if (step % 4 === 2) {
+                    const snareOsc = this.ctx.createOscillator();
+                    const snareGain = this.ctx.createGain();
+                    snareOsc.type = 'triangle';
+                    snareOsc.frequency.setValueAtTime(220, now);
+                    snareGain.gain.setValueAtTime(0.02, now);
+                    snareGain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+
+                    snareOsc.connect(snareGain);
+                    snareGain.connect(this.ctx.destination);
+                    snareOsc.start(now);
+                    snareOsc.stop(now + 0.06);
+                }
+            }
+
+            playJump() {
+                if (this.muted || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(180, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(750, this.ctx.currentTime + 0.12);
+
+                gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.12);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.12);
+            }
+
+            playDeath() {
+                if (this.muted || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(20, this.ctx.currentTime + 0.3);
+
+                gain.gain.setValueAtTime(0.18, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.3);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.3);
+            }
+
+            playGlitch() {
+                if (this.muted || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(1000, this.ctx.currentTime);
+                osc.frequency.setValueAtTime(250, this.ctx.currentTime + 0.04);
+                osc.frequency.setValueAtTime(1200, this.ctx.currentTime + 0.08);
+
+                gain.gain.setValueAtTime(0.09, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.12);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.12);
+            }
+
+            playPortalWin() {
+                if (this.muted || !this.ctx) return;
+                [523.25, 659.25, 783.99, 1046.50, 1318.51].forEach((freq, i) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime + i * 0.06);
+
+                    gain.gain.setValueAtTime(0.09, this.ctx.currentTime + i * 0.06);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + i * 0.06 + 0.18);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(this.ctx.currentTime + i * 0.06);
+                    osc.stop(this.ctx.currentTime + i * 0.06 + 0.18);
+                });
+            }
+        }
+
+        const audio = new GlitchSynthEngine();
+
+        // Canvas Setup
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Game State Variables
+        let currentLevelIndex = 0;
+        let totalDeaths = 0;
+        let levelDeaths = 0;
+        let timerSeconds = 0;
+        let levelTimerSeconds = 0;
+        let timerInterval = null;
+        let gameActive = false;
+        let animFrameCounter = 0;
+
+        // Camera Screen-shake state
+        let screenShake = 0;
+
+        // Vector Cyber-Bot Hero Entity
+        const player = {
+            x: 50,
+            y: 350,
+            w: 26,
+            h: 30,
+            vx: 0,
+            vy: 0,
+            speed: 4.8,
+            accel: 0.8,
+            friction: 0.75,
+            jumpPower: -10.2,
+            grounded: false,
+            coyoteTime: 0,
+            jumpBuffer: 0,
+            squish: 1.0,
+            facing: 1, // 1 for right, -1 for left
+            gravityInverted: false,
+            controlsInverted: false,
+            color: '#c084fc',
+            alive: true
+        };
+
+        // Key State Tracker
+        const keys = { left: false, right: false, jump: false };
+
+        // Level Definitions (10 Progressive Troll Levels)
+        const LEVEL_TITLES = [
+            "The Lying Door",
+            "Floor is Illusion",
+            "Gravity Inversion Zone",
+            "Moving Death Spikes",
+            "Inverted Controls Portal",
+            "The Shrinking Platform",
+            "Decoy Exit & Laser Grid",
+            "Glitch Wall & Phantom Platforms",
+            "Teleport Trap Chaos",
+            "The Master Illusion"
+        ];
+
+        let levelData = [];
+        let particles = [];
+        let backgroundDust = [];
+
+        // Pre-fill background dust particles
+        for (let i = 0; i < 40; i++) {
+            backgroundDust.push({
+                x: Math.random() * 800,
+                y: Math.random() * 450,
+                size: Math.random() * 2 + 1,
+                speedY: -(Math.random() * 0.5 + 0.2),
+                alpha: Math.random() * 0.6 + 0.2
+            });
+        }
+
+        function initLevels() {
+            levelData = [
+                // Level 1: The Lying Door
+                {
+                    spawn: { x: 50, y: 350 },
+                    portal: { x: 720, y: 330, fake: true, realX: 40, realY: 330 },
+                    platforms: [
+                        { x: 0, y: 380, w: 800, h: 70, type: 'solid' }
+                    ],
+                    spikes: [],
+                    triggers: [],
+                    customUpdate: function(lvl) {
+                        const dist = Math.hypot(player.x - lvl.portal.x, player.y - lvl.portal.y);
+                        if (dist < 110 && lvl.portal.fake) {
+                            lvl.portal.x = -100;
+                            lvl.portal.fake = false;
+                            lvl.realPortal = { x: 40, y: 330 };
+                            audio.playGlitch();
+                            triggerShake(12);
+                            createGlitchParticles(720, 330);
+                        }
+                    }
+                },
+                // Level 2: Floor is Illusion
+                {
+                    spawn: { x: 50, y: 350 },
+                    portal: { x: 720, y: 130 },
+                    platforms: [
+                        { x: 0, y: 380, w: 200, h: 70, type: 'solid' },
+                        { x: 220, y: 380, w: 120, h: 70, type: 'crumble', active: true, stepTimer: 0 },
+                        { x: 380, y: 320, w: 120, h: 70, type: 'crumble', active: true, stepTimer: 0 },
+                        { x: 540, y: 260, w: 100, h: 70, type: 'solid' },
+                        { x: 680, y: 180, w: 120, h: 70, type: 'solid' }
+                    ],
+                    spikes: [
+                        { x: 0, y: 430, w: 800, h: 20 }
+                    ],
+                    customUpdate: function(lvl) {
+                        lvl.platforms.forEach(p => {
+                            if (p.type === 'crumble' && p.active) {
+                                if (player.x + player.w > p.x && player.x < p.x + p.w && player.y + player.h >= p.y && player.y <= p.y + p.h) {
+                                    p.stepTimer++;
+                                    if (p.stepTimer > 12) {
+                                        p.active = false;
+                                        audio.playGlitch();
+                                        triggerShake(8);
+                                        createGlitchParticles(p.x + p.w / 2, p.y);
+                                    }
+                                }
+                            }
+                        });
+                    }
+                },
+                // Level 3: Gravity Inversion Zone
+                {
+                    spawn: { x: 50, y: 350 },
+                    portal: { x: 720, y: 70 },
+                    platforms: [
+                        { x: 0, y: 380, w: 300, h: 70, type: 'solid' },
+                        { x: 0, y: 0, w: 800, h: 40, type: 'solid' },
+                        { x: 500, y: 380, w: 300, h: 70, type: 'solid' }
+                    ],
+                    spikes: [
+                        { x: 300, y: 430, w: 200, h: 20 }
+                    ],
+                    triggers: [
+                        { x: 220, y: 300, w: 30, h: 80, hit: false, type: 'gravityFlip' }
+                    ],
+                    customUpdate: function(lvl) {
+                        lvl.triggers.forEach(t => {
+                            if (!t.hit && player.x + player.w > t.x && player.x < t.x + t.w && player.y + player.h > t.y && player.y < t.y + t.h) {
+                                t.hit = true;
+                                player.gravityInverted = true;
+                                audio.playGlitch();
+                                triggerShake(10);
+                            }
+                        });
+                    }
+                },
+                // Level 4: Moving Death Spikes
+                {
+                    spawn: { x: 50, y: 350 },
+                    portal: { x: 720, y: 330 },
+                    platforms: [
+                        { x: 0, y: 380, w: 800, h: 70, type: 'solid' }
+                    ],
+                    spikes: [
+                        { x: 300, y: 380, w: 40, h: 20, hidden: true, activeY: 360, origY: 380 },
+                        { x: 450, y: 380, w: 40, h: 20, hidden: true, activeY: 360, origY: 380 },
+                        { x: 600, y: 380, w: 40, h: 20, hidden: true, activeY: 360, origY: 380 }
+                    ],
+                    customUpdate: function(lvl) {
+                        lvl.spikes.forEach(s => {
+                            if (Math.abs(player.x - s.x) < 70) {
+                                if (s.y === s.origY) triggerShake(5);
+                                s.y = s.activeY;
+                            }
+                        });
+                    }
+                },
+                // Level 5: Inverted Controls Portal
+                {
+                    spawn: { x: 50, y: 350 },
+                    portal: { x: 720, y: 330 },
+                    platforms: [
+                        { x: 0, y: 380, w: 800, h: 70, type: 'solid' }
+                    ],
+                    triggers: [
+                        { x: 300, y: 300, w: 40, h: 80, hit: false, type: 'invertControls' }
+                    ],
+                    customUpdate: function(lvl) {
+                        lvl.triggers.forEach(t => {
+                            if (!t.hit && player.x + player.w > t.x && player.x < t.x + t.w) {
+                                t.hit = true;
+                                player.controlsInverted = true;
+                                audio.playGlitch();
+                                triggerShake(8);
+                            }
+                        });
+                    }
+                },
+                // Level 6: The Shrinking Platform
+                {
+                    spawn: { x: 50, y: 350 },
+                    portal: { x: 720, y: 330 },
+                    platforms: [
+                        { x: 0, y: 380, w: 200, h: 70, type: 'solid' },
+                        { x: 250, y: 380, w: 300, h: 70, type: 'shrink', minW: 30 },
+                        { x: 600, y: 380, w: 200, h: 70, type: 'solid' }
+                    ],
+                    spikes: [
+                        { x: 200, y: 430, w: 400, h: 20 }
+                    ],
+                    customUpdate: function(lvl) {
+                        lvl.platforms.forEach(p => {
+                            if (p.type === 'shrink') {
+                                if (player.x + player.w > p.x && player.x < p.x + p.w && player.y + player.h >= p.y) {
+                                    if (p.w > p.minW) p.w -= 1.6;
+                                }
+                            }
+                        });
+                    }
+                },
+                // Level 7: Decoy Exit & Laser Grid
+                {
+                    spawn: { x: 50, y: 350 },
+                    portal: { x: 720, y: 140, fake: false },
+                    decoyPortal: { x: 720, y: 330, fake: true },
+                    platforms: [
+                        { x: 0, y: 380, w: 800, h: 70, type: 'solid' },
+                        { x: 650, y: 190, w: 150, h: 20, type: 'solid' }
+                    ],
+                    lasers: [
+                        { x: 350, y1: 0, y2: 380, active: true, timer: 0 }
+                    ],
+                    customUpdate: function(lvl) {
+                        lvl.lasers.forEach(l => {
+                            l.timer += 0.05;
+                            l.active = Math.sin(l.timer) > 0;
+                        });
+                    }
+                },
+                // Level 8: Glitch Wall & Phantom Platforms
+                {
+                    spawn: { x: 50, y: 350 },
+                    portal: { x: 720, y: 330 },
+                    platforms: [
+                        { x: 0, y: 380, w: 300, h: 70, type: 'solid' },
+                        { x: 300, y: 200, w: 30, h: 180, type: 'fakeWall' },
+                        { x: 350, y: 380, w: 150, h: 70, type: 'invisible' },
+                        { x: 550, y: 380, w: 250, h: 70, type: 'solid' }
+                    ],
+                    spikes: [
+                        { x: 300, y: 430, w: 250, h: 20 }
+                    ],
+                    customUpdate: function(lvl) {}
+                },
+                // Level 9: Teleport Trap Chaos
+                {
+                    spawn: { x: 50, y: 350 },
+                    portal: { x: 720, y: 130 },
+                    platforms: [
+                        { x: 0, y: 380, w: 200, h: 70, type: 'solid' },
+                        { x: 250, y: 300, w: 100, h: 20, type: 'solid' },
+                        { x: 450, y: 220, w: 100, h: 20, type: 'solid' },
+                        { x: 650, y: 170, w: 150, h: 20, type: 'solid' }
+                    ],
+                    teleporters: [
+                        { x: 270, y: 260, targetX: 50, targetY: 100 }
+                    ],
+                    spikes: [
+                        { x: 0, y: 430, w: 800, h: 20 }
+                    ],
+                    customUpdate: function(lvl) {
+                        lvl.teleporters.forEach(t => {
+                            if (Math.hypot(player.x - t.x, player.y - t.y) < 25) {
+                                player.x = t.targetX;
+                                player.y = t.targetY;
+                                audio.playGlitch();
+                                triggerShake(10);
+                            }
+                        });
+                    }
+                },
+                // Level 10: The Master Illusion
+                {
+                    spawn: { x: 50, y: 350 },
+                    portal: { x: 720, y: 330, shiftX: 720 },
+                    platforms: [
+                        { x: 0, y: 380, w: 200, h: 70, type: 'solid' },
+                        { x: 220, y: 380, w: 120, h: 70, type: 'crumble', active: true, stepTimer: 0 },
+                        { x: 380, y: 380, w: 120, h: 70, type: 'solid' },
+                        { x: 540, y: 380, w: 260, h: 70, type: 'solid' }
+                    ],
+                    spikes: [
+                        { x: 220, y: 430, w: 120, h: 20 },
+                        { x: 400, y: 380, w: 40, h: 20, hidden: true, activeY: 360, origY: 380 }
+                    ],
+                    triggers: [
+                        { x: 420, y: 300, w: 30, h: 80, hit: false, type: 'gravityFlip' }
+                    ],
+                    customUpdate: function(lvl) {
+                        lvl.spikes.forEach(s => {
+                            if (s.hidden && Math.abs(player.x - s.x) < 50) s.y = s.activeY;
+                        });
+                        lvl.platforms.forEach(p => {
+                            if (p.type === 'crumble' && p.active) {
+                                if (player.x + player.w > p.x && player.x < p.x + p.w && player.y + player.h >= p.y) {
+                                    p.stepTimer++;
+                                    if (p.stepTimer > 10) p.active = false;
+                                }
+                            }
+                        });
+                        if (player.x > 650 && lvl.portal.shiftX === 720) {
+                            lvl.portal.x = 50;
+                            lvl.portal.shiftX = 50;
+                            audio.playGlitch();
+                            triggerShake(14);
+                        }
+                    }
+                }
+            ];
+        }
+
+        function triggerShake(intensity) {
+            screenShake = intensity;
+        }
+
+        function loadLevel(index) {
+            currentLevelIndex = index;
+            levelDeaths = 0;
+            levelTimerSeconds = 0;
+            const lvl = levelData[index];
+
+            player.x = lvl.spawn.x;
+            player.y = lvl.spawn.y;
+            player.vx = 0;
+            player.vy = 0;
+            player.coyoteTime = 0;
+            player.jumpBuffer = 0;
+            player.gravityInverted = false;
+            player.controlsInverted = false;
+            player.alive = true;
+
+            document.getElementById('hudLevelDisplay').textContent = `${index + 1} / ${levelData.length}`;
+            document.getElementById('levelTitleDisplay').textContent = `"${LEVEL_TITLES[index]}"`;
+            updateStarsDisplay();
+        }
+
+        function updateStarsDisplay() {
+            let stars = "★★★";
+            if (levelDeaths > 3 || levelTimerSeconds > 25) stars = "★☆☆";
+            else if (levelDeaths > 0 || levelTimerSeconds > 12) stars = "★★☆";
+            document.getElementById('hudStarsDisplay').textContent = stars;
+        }
+
+        function restartCurrentLevel() {
+            totalDeaths++;
+            levelDeaths++;
+            document.getElementById('hudDeathDisplay').textContent = totalDeaths;
+            updateStarsDisplay();
+            audio.playDeath();
+            triggerShake(16);
+            createGlitchParticles(player.x + player.w/2, player.y + player.h/2);
+            initLevels();
+            loadLevel(currentLevelIndex);
+        }
+
+        // --- Particle Engine ---
+        function createGlitchParticles(x, y) {
+            for (let i = 0; i < 20; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.5) * 8,
+                    size: Math.random() * 5 + 2,
+                    color: Math.random() > 0.5 ? '#a855f7' : '#ec4899',
+                    life: 25
+                });
+            }
+        }
+
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life--;
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+
+            // Background floating particles
+            backgroundDust.forEach(d => {
+                d.y += d.speedY;
+                if (d.y < -10) {
+                    d.y = 460;
+                    d.x = Math.random() * 800;
+                }
+            });
+        }
+
+        function drawParticles() {
+            particles.forEach(p => {
+                ctx.fillStyle = p.color;
+                ctx.fillRect(p.x, p.y, p.size, p.size);
+            });
+        }
+
+        // --- Main Game Physics Loop ---
+        function updatePhysics() {
+            if (!gameActive) return;
+
+            const lvl = levelData[currentLevelIndex];
+
+            if (lvl.customUpdate) lvl.customUpdate(lvl);
+
+            let leftKey = player.controlsInverted ? keys.right : keys.left;
+            let rightKey = player.controlsInverted ? keys.left : keys.right;
+
+            // Smoother Acceleration / Friction Momentum
+            if (leftKey) {
+                player.vx -= player.accel;
+                player.facing = -1;
+            } else if (rightKey) {
+                player.vx += player.accel;
+                player.facing = 1;
+            } else {
+                player.vx *= player.friction;
+            }
+
+            // Clamp max velocity
+            player.vx = Math.max(-player.speed, Math.min(player.speed, player.vx));
+
+            const gDir = player.gravityInverted ? -1 : 1;
+            player.vy += 0.48 * gDir;
+
+            // Coyote time & Jump buffering implementation
+            if (player.grounded) {
+                player.coyoteTime = 6;
+            } else if (player.coyoteTime > 0) {
+                player.coyoteTime--;
+            }
+
+            if (keys.jump) {
+                player.jumpBuffer = 6;
+            } else if (player.jumpBuffer > 0) {
+                player.jumpBuffer--;
+            }
+
+            if (player.jumpBuffer > 0 && player.coyoteTime > 0) {
+                player.vy = player.jumpPower * gDir;
+                player.coyoteTime = 0;
+                player.jumpBuffer = 0;
+                player.squish = 1.35; // Squish upwards on jump launch
+                player.grounded = false;
+                audio.playJump();
+                createGlitchParticles(player.x + player.w/2, player.y + player.h);
+            }
+
+            player.x += player.vx;
+            player.y += player.vy;
+
+            // Recover elasticity
+            player.squish += (1.0 - player.squish) * 0.15;
+
+            player.grounded = false;
+            lvl.platforms.forEach(p => {
+                if (p.type === 'crumble' && !p.active) return;
+                if (p.type === 'fakeWall') return;
+
+                if (player.x + player.w > p.x && player.x < p.x + p.w) {
+                    if (!player.gravityInverted && player.y + player.h >= p.y && player.y + player.h <= p.y + 15 && player.vy >= 0) {
+                        player.y = p.y - player.h;
+                        if (!player.grounded && player.vy > 4) player.squish = 0.7; // Landing squish
+                        player.vy = 0;
+                        player.grounded = true;
+                    }
+                    else if (player.gravityInverted && player.y <= p.y + p.h && player.y >= p.y + p.h - 15 && player.vy <= 0) {
+                        player.y = p.y + p.h;
+                        if (!player.grounded && player.vy < -4) player.squish = 0.7;
+                        player.vy = 0;
+                        player.grounded = true;
+                    }
+                }
+            });
+
+            if (lvl.spikes) {
+                lvl.spikes.forEach(s => {
+                    if (player.x + player.w > s.x && player.x < s.x + s.w && player.y + player.h > s.y && player.y < s.y + s.h) {
+                        restartCurrentLevel();
+                    }
+                });
+            }
+
+            if (lvl.lasers) {
+                lvl.lasers.forEach(l => {
+                    if (l.active && Math.abs(player.x - l.x) < 10) {
+                        restartCurrentLevel();
+                    }
+                });
+            }
+
+            if (player.y > 480 || player.y < -50) {
+                restartCurrentLevel();
+            }
+
+            const targetPortal = lvl.realPortal || lvl.portal;
+            const portalDist = Math.hypot((player.x + player.w/2) - (targetPortal.x + 20), (player.y + player.h/2) - (targetPortal.y + 25));
+            
+            // Suction effect towards portal when close
+            if (portalDist < 60) {
+                player.vx += ((targetPortal.x + 20) - (player.x + player.w/2)) * 0.05;
+                player.vy += ((targetPortal.y + 25) - (player.y + player.h/2)) * 0.05;
+            }
+
+            if (portalDist < 25) {
+                audio.playPortalWin();
+                createGlitchParticles(targetPortal.x + 20, targetPortal.y + 25);
+
+                gameActive = false;
+                let stars = "★★★";
+                if (levelDeaths > 3 || levelTimerSeconds > 25) stars = "★☆☆";
+                else if (levelDeaths > 0 || levelTimerSeconds > 12) stars = "★★☆";
+
+                document.getElementById('clearStarsDisplay').textContent = stars;
+                document.getElementById('clearLevelTitle').textContent = `SECTOR ${currentLevelIndex + 1} CLEARED!`;
+                document.getElementById('clearStatsText').textContent = `Deaths: ${levelDeaths} | Sector Time: ${levelTimerSeconds}s`;
+
+                if (currentLevelIndex + 1 < levelData.length) {
+                    document.getElementById('levelClearOverlay').classList.remove('hidden');
+                } else {
+                    clearInterval(timerInterval);
+                    document.getElementById('finalDeathCount').textContent = totalDeaths;
+                    document.getElementById('finalTimeCount').textContent = document.getElementById('hudTimerDisplay').textContent;
+                    document.getElementById('gameVictoryOverlay').classList.remove('hidden');
+                }
+            }
+
+            updateParticles();
+
+            // Decay camera shake
+            if (screenShake > 0) screenShake *= 0.85;
+            if (screenShake < 0.2) screenShake = 0;
+        }
+
+        // --- Render Engine ---
+        function render() {
+            ctx.save();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Camera screen shake
+            if (screenShake > 0) {
+                const rx = (Math.random() - 0.5) * screenShake;
+                const ry = (Math.random() - 0.5) * screenShake;
+                ctx.translate(rx, ry);
+            }
+
+            animFrameCounter++;
+
+            // Draw Parallax Background Grid
+            ctx.strokeStyle = 'rgba(168, 85, 247, 0.07)';
+            ctx.lineWidth = 1;
+            const gridOffset = (animFrameCounter * 0.4) % 40;
+            for (let x = 0; x < canvas.width; x += 40) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = gridOffset; y < canvas.height; y += 40) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+
+            // Draw Background Dust
+            backgroundDust.forEach(d => {
+                ctx.fillStyle = `rgba(192, 132, 252, ${d.alpha})`;
+                ctx.beginPath();
+                ctx.arc(d.x, d.y, d.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            const lvl = levelData[currentLevelIndex];
+
+            // Draw Platforms
+            lvl.platforms.forEach(p => {
+                if (p.type === 'crumble' && !p.active) return;
+                if (p.type === 'invisible') return;
+
+                if (p.type === 'fakeWall') {
+                    ctx.fillStyle = '#180e29';
+                    ctx.strokeStyle = '#3b1d62';
+                } else if (p.type === 'crumble') {
+                    ctx.fillStyle = '#581c87';
+                    ctx.strokeStyle = '#f59e0b';
+                } else {
+                    ctx.fillStyle = '#0f051d';
+                    ctx.strokeStyle = '#a855f7';
+                }
+
+                ctx.shadowColor = '#a855f7';
+                ctx.shadowBlur = p.type === 'solid' ? 8 : 0;
+                ctx.fillRect(p.x, p.y, p.w, p.h);
+                ctx.lineWidth = 2;
+                ctx.strokeRect(p.x, p.y, p.w, p.h);
+                ctx.shadowBlur = 0;
+            });
+
+            // Draw Spikes
+            if (lvl.spikes) {
+                lvl.spikes.forEach(s => {
+                    ctx.fillStyle = '#e11d48';
+                    ctx.shadowColor = '#f43f5e';
+                    ctx.shadowBlur = 6;
+                    const count = Math.floor(s.w / 10);
+                    for (let i = 0; i < count; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(s.x + i * 10, s.y + s.h);
+                        ctx.lineTo(s.x + i * 10 + 5, s.y);
+                        ctx.lineTo(s.x + (i + 1) * 10, s.y + s.h);
+                        ctx.fill();
+                    }
+                    ctx.shadowBlur = 0;
+                });
+            }
+
+            // Draw Lasers
+            if (lvl.lasers) {
+                lvl.lasers.forEach(l => {
+                    if (l.active) {
+                        ctx.strokeStyle = '#f43f5e';
+                        ctx.shadowColor = '#ec4899';
+                        ctx.shadowBlur = 12;
+                        ctx.lineWidth = 4;
+                        ctx.beginPath();
+                        ctx.moveTo(l.x, l.y1);
+                        ctx.lineTo(l.x, l.y2);
+                        ctx.stroke();
+                        ctx.shadowBlur = 0;
+                    }
+                });
+            }
+
+            // Draw Animated Vortex Exit Portals
+            [lvl.portal, lvl.decoyPortal, lvl.realPortal].forEach(port => {
+                if (!port) return;
+                const px = port.x + 20;
+                const py = port.y + 25;
+                const pColor = port.fake ? '#f43f5e' : '#c084fc';
+
+                ctx.save();
+                ctx.translate(px, py);
+                ctx.rotate(animFrameCounter * 0.05);
+
+                // Outer Ring
+                ctx.strokeStyle = pColor;
+                ctx.lineWidth = 3;
+                ctx.shadowColor = pColor;
+                ctx.shadowBlur = 12;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 18, 26, 0, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // Inner Singularity
+                ctx.rotate(-animFrameCounter * 0.1);
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 8, 14, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+                ctx.shadowBlur = 0;
+            });
+
+            // Draw Teleporters
+            if (lvl.teleporters) {
+                lvl.teleporters.forEach(t => {
+                    ctx.fillStyle = '#ec4899';
+                    ctx.shadowColor = '#ec4899';
+                    ctx.shadowBlur = 10;
+                    ctx.beginPath();
+                    ctx.arc(t.x, t.y, 12, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                });
+            }
+
+            // Draw Advanced Vector Cyber-Bot Hero
+            ctx.save();
+            const cx = player.x + player.w / 2;
+            const cy = player.y + player.h / 2;
+            ctx.translate(cx, cy);
+            ctx.scale(player.facing, 1);
+
+            // Squish/stretch physics transformation
+            const squishW = 1 / player.squish;
+            const squishH = player.squish;
+            ctx.scale(squishW, squishH);
+
+            const floatOffset = Math.sin(animFrameCounter * 0.12) * 2;
+
+            // Thruster Flames
+            if (!player.grounded) {
+                ctx.fillStyle = '#ec4899';
+                ctx.shadowColor = '#f43f5e';
+                ctx.shadowBlur = 8;
+                ctx.beginPath();
+                ctx.moveTo(-5, 12 + floatOffset);
+                ctx.lineTo(0, 22 + floatOffset + Math.random() * 4);
+                ctx.lineTo(5, 12 + floatOffset);
+                ctx.fill();
+            }
+
+            // Cyber Armor Core
+            ctx.fillStyle = '#1e0a38';
+            ctx.strokeStyle = player.controlsInverted ? '#f43f5e' : '#a855f7';
+            ctx.lineWidth = 2;
+            ctx.shadowColor = '#c084fc';
+            ctx.shadowBlur = 10;
+
+            ctx.beginPath();
+            ctx.roundRect(-12, -14 + floatOffset, 24, 26, 8);
+            ctx.fill();
+            ctx.stroke();
+
+            // Glowing Power Core
+            ctx.fillStyle = player.controlsInverted ? '#f43f5e' : '#c084fc';
+            ctx.beginPath();
+            ctx.arc(0, 2 + floatOffset, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Helmet Visor Shield
+            ctx.fillStyle = '#08020f';
+            ctx.beginPath();
+            ctx.roundRect(-9, -12 + floatOffset, 18, 10, 4);
+            ctx.fill();
+
+            // Visor Animated Eyes
+            ctx.fillStyle = player.controlsInverted ? '#f43f5e' : '#38bdf8';
+            ctx.shadowColor = '#38bdf8';
+            ctx.shadowBlur = 6;
+
+            if (!player.alive) {
+                ctx.font = '10px monospace';
+                ctx.fillText('x x', -7, -4 + floatOffset);
+            } else {
+                const blink = Math.sin(animFrameCounter * 0.08) > 0.95;
+                if (!blink) {
+                    ctx.fillRect(1, -9 + floatOffset, 4, 3);
+                    ctx.fillRect(6, -9 + floatOffset, 2, 3);
+                }
+            }
+
+            // Jetpack Pods
+            ctx.fillStyle = '#581c87';
+            ctx.fillRect(-15, -8 + floatOffset, 3, 14);
+
+            ctx.restore();
+            ctx.shadowBlur = 0;
+
+            drawParticles();
+            ctx.restore();
+        }
+
+        function gameLoop() {
+            updatePhysics();
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- Event Listeners & UI Handlers ---
+        window.addEventListener('keydown', e => {
+            audio.init();
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = true;
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = true;
+            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W' || e.key === ' ') keys.jump = true;
+            if (e.key === 'r' || e.key === 'R') restartCurrentLevel();
+            if (e.key === 'Escape') {
+                gameActive = false;
+                document.getElementById('levelSelectMenu').classList.remove('hidden');
+            }
+        });
+
+        window.addEventListener('keyup', e => {
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = false;
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = false;
+            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W' || e.key === ' ') keys.jump = false;
+        });
+
+        // Touch Controls
+        const btnLeft = document.getElementById('btnLeft');
+        const btnRight = document.getElementById('btnRight');
+        const btnJump = document.getElementById('btnJump');
+        const btnRestart = document.getElementById('btnRestart');
+
+        btnLeft.addEventListener('touchstart', (e) => { e.preventDefault(); keys.left = true; });
+        btnLeft.addEventListener('touchend', (e) => { e.preventDefault(); keys.left = false; });
+        btnRight.addEventListener('touchstart', (e) => { e.preventDefault(); keys.right = true; });
+        btnRight.addEventListener('touchend', (e) => { e.preventDefault(); keys.right = false; });
+        btnJump.addEventListener('touchstart', (e) => { e.preventDefault(); keys.jump = true; });
+        btnJump.addEventListener('touchend', (e) => { e.preventDefault(); keys.jump = false; });
+        btnRestart.addEventListener('click', restartCurrentLevel);
+
+        // Level Clear Actions
+        document.getElementById('nextLevelBtn').addEventListener('click', () => {
+            document.getElementById('levelClearOverlay').classList.add('hidden');
+            startGameWithLevel(currentLevelIndex + 1);
+        });
+
+        document.getElementById('replayLevelBtn').addEventListener('click', () => {
+            document.getElementById('levelClearOverlay').classList.add('hidden');
+            startGameWithLevel(currentLevelIndex);
+        });
+
+        // Generate Level Select Grid Buttons
+        const grid = document.getElementById('levelGridButtons');
+        for (let i = 0; i < 10; i++) {
+            const btn = document.createElement('button');
+            btn.className = 'p-2.5 bg-zinc-950 hover:bg-purple-600/30 text-purple-300 border border-purple-500/40 rounded-xl font-orbitron font-bold text-xs transition';
+            btn.textContent = `L${i + 1}`;
+            btn.addEventListener('click', () => {
+                startGameWithLevel(i);
+            });
+            grid.appendChild(btn);
+        }
+
+        document.getElementById('startFirstLevelBtn').addEventListener('click', () => startGameWithLevel(0));
+
+        function startGameWithLevel(index) {
+            audio.init();
+            initLevels();
+            loadLevel(index);
+            document.getElementById('levelSelectMenu').classList.add('hidden');
+            gameActive = true;
+
+            if (!timerInterval) {
+                timerInterval = setInterval(() => {
+                    timerSeconds++;
+                    levelTimerSeconds++;
+                    const mins = String(Math.floor(timerSeconds / 60)).padStart(2, '0');
+                    const secs = String(timerSeconds % 60).padStart(2, '0');
+                    document.getElementById('hudTimerDisplay').textContent = `${mins}:${secs}`;
+                    updateStarsDisplay();
+                }, 1000);
+            }
+        }
+
+        // Audio Toggle
+        document.getElementById('audioToggleBtn').addEventListener('click', () => {
+            audio.muted = !audio.muted;
+            const icon = document.getElementById('audioIcon');
+            const text = document.getElementById('audioText');
+            if (audio.muted) {
+                icon.className = "fa-solid fa-volume-xmark text-fuchsia-400";
+                text.textContent = "Sound OFF";
+            } else {
+                audio.init();
+                icon.className = "fa-solid fa-volume-high text-purple-400";
+                text.textContent = "Sound ON";
+            }
+        });
+
+        // Initialize Engine
+        initLevels();
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>
